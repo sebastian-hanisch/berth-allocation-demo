@@ -1,5 +1,7 @@
 # Kaiplatz-Zuteilung (Berth Allocation) – Streamlit-Demo
 
+**[→ Demo live ausprobieren](https://sebastianhanisch-berth-allocation-demo.streamlit.app/)**
+
 Interaktive Demo zum **Berth Allocation Problem (BAP)** aus dem Containerterminal-Betrieb:
 welches Schiff legt **wann** und **wo entlang des Kais** an? Schiffe haben eine physische Länge
 und belegen einen zusammenhängenden Kai-Abschnitt - zwei Schiffe dürfen sich nie gleichzeitig
