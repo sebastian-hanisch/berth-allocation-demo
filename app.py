@@ -151,16 +151,6 @@ with st.sidebar:
         "(Festmacher, Fender).",
     )
 
-    st.markdown("**Referenz**")
-    run_exact_clicked = st.button(
-        "🎯 Exakte Lösung berechnen (OR-Tools CP-SAT)",
-        use_container_width=True,
-        help="Löst das vollständige Zuteilungsmodell exakt - dient als Cross-Check für die Heuristiken. "
-        f"Auf {C.EXACT_SOLVE_TIME_LIMIT_SECONDS}s begrenzt (bei vielen Schiffen manchmal nur die beste "
-        "gefundene, nicht bewiesen optimale Lösung - wird dann so gekennzeichnet). Läuft bewusst nur auf "
-        "Klick, nicht automatisch bei jeder Änderung.",
-    )
-
     st.button(
         "🎲 Neue Schiffe generieren", use_container_width=True, on_click=randomize_seed,
         help="Würfelt einen neuen Zufalls-Seed für die Schiffsflotte.",
@@ -192,18 +182,6 @@ baseline = max(results, key=lambda r: r["total_weighted_wait"])
 score_saved = baseline["total_weighted_wait"] - best["total_weighted_wait"]
 pct_saved = (score_saved / baseline["total_weighted_wait"] * 100) if baseline["total_weighted_wait"] > 0 else 0.0
 
-if run_exact_clicked:
-    st.session_state["exact_scenario_key"] = scenario_key
-
-exact_result = None
-exact_stale = False
-if st.session_state.get("exact_scenario_key") == scenario_key:
-    hint_plan = {idx: (info["start"], info["pos"]) for idx, info in results[2]["plan"].items()}
-    with st.spinner(f"Berechne exakte Lösung (OR-Tools CP-SAT, bis zu {C.EXACT_SOLVE_TIME_LIMIT_SECONDS}s)..."):
-        exact_result = _compute_exact(scenario_key, hint_plan)
-elif "exact_scenario_key" in st.session_state:
-    exact_stale = True
-
 st.markdown("## 🎯 Ihre beste Kaibelegung")
 st.caption(f"Methode: **{best['label']}** - wird bei jedem Lauf neu anhand der gewichteten Wartezeit bestimmt.")
 
@@ -219,50 +197,6 @@ if score_saved > 0.5:
     st.success(
         f"⏱️ **{best['label']}** spart hier ca. **{score_saved:.1f} Punkte** ({pct_saved:.1f}%) "
         f"gewichtete Wartezeit gegenüber '{baseline['label']}'."
-    )
-
-if exact_result is not None:
-    exact_eval = exact_result["eval"]
-    gap = best["total_weighted_wait"] - exact_eval["total_weighted_wait"]
-    gap_pct = (gap / exact_eval["total_weighted_wait"] * 100) if exact_eval["total_weighted_wait"] > 0 else 0.0
-
-    if exact_result["optimal"]:
-        if gap < 0.5:
-            st.info(
-                f"✅ Exakter Referenzlöser (OR-Tools, optimal gelöst, {exact_result['wall_time_ms']:.0f} ms): "
-                f"**{best['label']}** erreicht bereits das Optimum ({exact_eval['total_weighted_wait']:.1f})."
-            )
-        else:
-            st.info(
-                f"📐 Exakter Referenzlöser (OR-Tools, optimal gelöst, {exact_result['wall_time_ms']:.0f} ms): "
-                f"Optimum liegt bei {exact_eval['total_weighted_wait']:.1f} - Lücke zur besten Heuristik: "
-                f"{gap:.1f} ({gap_pct:.1f}%)."
-            )
-    else:
-        if gap <= 0.5:
-            st.warning(
-                f"⏱️ Exakter Referenzlöser (OR-Tools, Zeitlimit erreicht, kein Optimalitätsbeweis, "
-                f"{exact_result['wall_time_ms']:.0f} ms): **{best['label']}** ({best['total_weighted_wait']:.1f}) "
-                f"erreicht oder unterbietet sogar die beste vom Solver gefundene Lösung "
-                f"({exact_eval['total_weighted_wait']:.1f}) - das tatsächliche Optimum könnte noch darunter liegen."
-            )
-        else:
-            st.warning(
-                f"⏱️ Exakter Referenzlöser (OR-Tools, Zeitlimit erreicht, kein Optimalitätsbeweis, "
-                f"{exact_result['wall_time_ms']:.0f} ms): beste bislang gefundene Lösung liegt bei "
-                f"{exact_eval['total_weighted_wait']:.1f} - {gap:.1f} ({gap_pct:.1f}%) unter der besten "
-                "Heuristik, aber ohne Optimalitätsgarantie."
-            )
-elif exact_stale:
-    st.info(
-        "ℹ️ Die zuletzt berechnete exakte Lösung bezog sich auf ein anderes Szenario - Einstellungen "
-        "links geändert? Erneut auf '🎯 Exakte Lösung berechnen' klicken, um sie für die aktuelle "
-        "Konfiguration zu erhalten."
-    )
-else:
-    st.caption(
-        "💡 Exaktes Optimum als Cross-Check sehen? Button '🎯 Exakte Lösung berechnen' in der Seitenleiste - "
-        "läuft nur auf Klick, da es bei großen Szenarien einige Sekunden dauern kann."
     )
 
 fig_best = build_berth_chart(instance, best, title=best["label"])
@@ -337,19 +271,81 @@ else:
 st.markdown("---")
 
 with st.expander("🔧 Wie wir das erreichen – vollständiger Methodenvergleich"):
-    all_results = list(results)
-    if exact_result is not None:
-        all_results.append(exact_result["eval"])
+    prefixes = ["fcfs", "priority", "polish"]
+    tab_labels = [r["label"] for r in results] + ["🧮 Exakt (OR-Tools)", "📊 Vergleich"]
+    tabs = st.tabs(tab_labels)
 
-    st.dataframe(comparison_table(all_results), use_container_width=True, hide_index=True)
-    st.plotly_chart(build_comparison_chart(all_results), use_container_width=True)
-    st.plotly_chart(build_priority_wait_chart(all_results), use_container_width=True)
-
-    prefixes = ["fcfs", "priority", "polish", "exact"]
-    tabs = st.tabs([r["label"] for r in all_results])
-    for tab, r, prefix in zip(tabs, all_results, prefixes):
+    for tab, r, prefix in zip(tabs[: len(results)], results, prefixes):
         with tab:
             render_berth_panel(prefix, r["label"], instance, r)
+
+    tab_exact, tab_compare = tabs[len(results)], tabs[len(results) + 1]
+
+    exact_eval = None
+    with tab_exact:
+        st.caption(
+            "Löst dasselbe Zuteilungsmodell exakt statt mit unseren eigenen Verfahren - dient als "
+            f"Cross-Check. Auf {C.EXACT_SOLVE_TIME_LIMIT_SECONDS}s begrenzt (bei vielen Schiffen manchmal "
+            "nur die beste gefundene, nicht bewiesen optimale Lösung - wird dann so gekennzeichnet)."
+        )
+        solve_clicked = st.button("🧮 Mit OR-Tools lösen", key="exact_solve_btn")
+        if solve_clicked:
+            st.session_state["exact_scenario_key"] = scenario_key
+
+        if st.session_state.get("exact_scenario_key") == scenario_key:
+            hint_plan = {idx: (info["start"], info["pos"]) for idx, info in results[2]["plan"].items()}
+            with st.spinner(f"Berechne exakte Lösung (OR-Tools CP-SAT, bis zu {C.EXACT_SOLVE_TIME_LIMIT_SECONDS}s)..."):
+                exact_result = _compute_exact(scenario_key, hint_plan)
+
+            if exact_result is None:
+                st.error(
+                    "🚫 OR-Tools hat innerhalb des Zeitlimits keine gültige Lösung gefunden. Bitte "
+                    "Sicherheitsabstand verringern oder Zonen/Kailänge großzügiger einstellen."
+                )
+            else:
+                exact_eval = exact_result["eval"]
+                gap = best["total_weighted_wait"] - exact_eval["total_weighted_wait"]
+                gap_pct = (gap / exact_eval["total_weighted_wait"] * 100) if exact_eval["total_weighted_wait"] > 0 else 0.0
+
+                if exact_result["optimal"]:
+                    if gap < 0.5:
+                        st.info(
+                            f"✅ Optimal gelöst ({exact_result['wall_time_ms']:.0f} ms): **{best['label']}** "
+                            f"erreicht bereits das Optimum ({exact_eval['total_weighted_wait']:.1f})."
+                        )
+                    else:
+                        st.info(
+                            f"📐 Optimal gelöst ({exact_result['wall_time_ms']:.0f} ms): Optimum liegt bei "
+                            f"{exact_eval['total_weighted_wait']:.1f} - Lücke zur besten Heuristik: "
+                            f"{gap:.1f} ({gap_pct:.1f}%)."
+                        )
+                else:
+                    if gap <= 0.5:
+                        st.warning(
+                            f"⏱️ Zeitlimit erreicht, kein Optimalitätsbeweis ({exact_result['wall_time_ms']:.0f} ms): "
+                            f"**{best['label']}** ({best['total_weighted_wait']:.1f}) erreicht oder unterbietet "
+                            f"sogar die beste vom Solver gefundene Lösung ({exact_eval['total_weighted_wait']:.1f})."
+                        )
+                    else:
+                        st.warning(
+                            f"⏱️ Zeitlimit erreicht, kein Optimalitätsbeweis ({exact_result['wall_time_ms']:.0f} ms): "
+                            f"beste bislang gefundene Lösung liegt bei {exact_eval['total_weighted_wait']:.1f} - "
+                            f"{gap:.1f} ({gap_pct:.1f}%) unter der besten Heuristik, aber ohne Optimalitätsgarantie."
+                        )
+                render_berth_panel("exact", exact_eval["label"], instance, exact_eval)
+        elif "exact_scenario_key" in st.session_state:
+            st.info(
+                "ℹ️ Die zuletzt berechnete exakte Lösung bezog sich auf ein anderes Szenario - "
+                "Einstellungen geändert? Erneut auf '🧮 Mit OR-Tools lösen' klicken."
+            )
+        else:
+            st.info("Noch keine Lösung berechnet – auf den Button oben klicken.")
+
+    with tab_compare:
+        all_results = list(results) + ([exact_eval] if exact_eval is not None else [])
+        st.dataframe(comparison_table(all_results), use_container_width=True, hide_index=True)
+        st.plotly_chart(build_comparison_chart(all_results), use_container_width=True)
+        st.plotly_chart(build_priority_wait_chart(all_results), use_container_width=True)
 
 with st.expander("Wie funktioniert diese Demo?"):
     st.markdown(
