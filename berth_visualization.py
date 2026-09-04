@@ -21,13 +21,10 @@ def build_berth_chart(instance, result, title=""):
             showarrow=False, xanchor="left", yanchor="top", font=dict(size=10, color="#666"), xshift=4,
         )
 
-    legend_shown = set()
     for idx, info in plan.items():
         ship = instance.ships[idx]
         start, pos, wait = info["start"], info["pos"], info["wait"]
         color = C.PRIORITY_COLORS.get(ship.priority, "#888888")
-        show_legend = ship.priority not in legend_shown
-        legend_shown.add(ship.priority)
 
         fig.add_shape(
             type="rect", x0=start, x1=start + ship.handling_time, y0=pos, y1=pos + ship.length,
@@ -39,8 +36,7 @@ def build_berth_chart(instance, result, title=""):
                 y=[pos + ship.length / 2],
                 mode="markers",
                 marker=dict(size=1, color=color),
-                showlegend=show_legend,
-                name=ship.priority,
+                showlegend=False,
                 hovertemplate=(
                     f"<b>{ship.name}</b> ({ship.priority})<br>"
                     f"Ankunft: {ship.arrival} h &nbsp;|&nbsp; Anlegebeginn: {start} h "
@@ -49,6 +45,24 @@ def build_berth_chart(instance, result, title=""):
                     f"Position: {pos}-{pos + ship.length} m &nbsp;|&nbsp; Tiefgang: {ship.draft} m"
                     "<extra></extra>"
                 ),
+            )
+        )
+
+    # Eigene Legenden-Einträge statt der (bei marker-size=1 kaum sichtbaren) automatischen
+    # Punkt-Swatches der Hover-Traces oben: EIN unsichtbarer Dummy-Punkt je tatsächlich
+    # vorkommender Prioritätsklasse, in fester fachlicher Reihenfolge (Mainliner > Feeder >
+    # Tramp) statt in der zufälligen Einfüge-Reihenfolge der Heuristik - mit einem großen,
+    # quadratischen Marker, der wie ein Farbfeld aussieht (vgl. dieselbe Dummy-Trace-Technik in
+    # quaycrane_visualization.py für dessen "Wartezeit"-Legendeneintrag).
+    present_priorities = {instance.ships[idx].priority for idx in plan}
+    for priority in ("Mainliner", "Feeder", "Tramp"):
+        if priority not in present_priorities:
+            continue
+        fig.add_trace(
+            go.Scatter(
+                x=[None], y=[None], mode="markers",
+                marker=dict(size=14, symbol="square", color=C.PRIORITY_COLORS.get(priority, "#888888")),
+                name=priority,
             )
         )
 
