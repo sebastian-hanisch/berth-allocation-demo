@@ -344,8 +344,8 @@ with st.expander("🔧 Wie wir das erreichen – vollständiger Methodenvergleic
     with tab_compare:
         all_results = list(results) + ([exact_eval] if exact_eval is not None else [])
         st.dataframe(comparison_table(all_results), use_container_width=True, hide_index=True)
-        st.plotly_chart(build_comparison_chart(all_results), use_container_width=True)
-        st.plotly_chart(build_priority_wait_chart(all_results), use_container_width=True)
+        st.plotly_chart(build_comparison_chart(all_results), use_container_width=True, key="comparison_chart")
+        st.plotly_chart(build_priority_wait_chart(all_results), use_container_width=True, key="priority_wait_chart")
 
 with st.expander("Wie funktioniert diese Demo?"):
     st.markdown(
