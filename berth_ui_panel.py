@@ -13,7 +13,7 @@ def render_berth_panel(prefix, label, instance, result):
     m3.metric("Letzte Abfahrt", f"{result['last_departure']:.0f} h")
 
     fig = build_berth_chart(instance, result, title=label)
-    st.plotly_chart(fig, use_container_width=True, key=f"{prefix}_berth_chart")
+    st.plotly_chart(fig, width="stretch", key=f"{prefix}_berth_chart")
 
     pdf_bytes = generate_berth_plan_pdf(label, instance, result)
     st.download_button(

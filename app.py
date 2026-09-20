@@ -96,7 +96,7 @@ PRESET_HELP = {
 preset_cols = st.columns(len(C.PRESETS))
 for i, name in enumerate(C.PRESETS.keys()):
     with preset_cols[i]:
-        st.button(name, use_container_width=True, on_click=apply_preset, args=(name,), help=PRESET_HELP[name])
+        st.button(name, width="stretch", on_click=apply_preset, args=(name,), help=PRESET_HELP[name])
 
 st.caption(
     "🔗 Die Adresszeile oben spiegelt Ihre aktuelle Konfiguration wider – einfach kopieren, "
@@ -152,7 +152,7 @@ with st.sidebar:
     )
 
     st.button(
-        "🎲 Neue Schiffe generieren", use_container_width=True, on_click=randomize_seed,
+        "🎲 Neue Schiffe generieren", width="stretch", on_click=randomize_seed,
         help="Würfelt einen neuen Zufalls-Seed für die Schiffsflotte.",
     )
 
@@ -200,7 +200,7 @@ if score_saved > 0.5:
     )
 
 fig_best = build_berth_chart(instance, best, title=best["label"])
-st.plotly_chart(fig_best, use_container_width=True, key="primary_berth_chart")
+st.plotly_chart(fig_best, width="stretch", key="primary_berth_chart")
 
 pdf_bytes_best = generate_berth_plan_pdf(best["label"], instance, best)
 st.download_button(
@@ -343,9 +343,9 @@ with st.expander("🔧 Wie wir das erreichen – vollständiger Methodenvergleic
 
     with tab_compare:
         all_results = list(results) + ([exact_eval] if exact_eval is not None else [])
-        st.dataframe(comparison_table(all_results), use_container_width=True, hide_index=True)
-        st.plotly_chart(build_comparison_chart(all_results), use_container_width=True, key="comparison_chart")
-        st.plotly_chart(build_priority_wait_chart(all_results), use_container_width=True, key="priority_wait_chart")
+        st.dataframe(comparison_table(all_results), width="stretch", hide_index=True)
+        st.plotly_chart(build_comparison_chart(all_results), width="stretch", key="comparison_chart")
+        st.plotly_chart(build_priority_wait_chart(all_results), width="stretch", key="priority_wait_chart")
 
 with st.expander("Wie funktioniert diese Demo?"):
     st.markdown(
