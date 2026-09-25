@@ -57,6 +57,17 @@ def test_check_feasible_rejects_draft_exceeding_zone_limit():
     assert any("Tiefgang" in v for v in violations)
 
 
+def test_check_feasible_rejects_safety_margin_crossing_zone_boundary():
+    # draft 12 braucht die Tiefwasserzone (0-150); length 40 + safety_margin 10 = width 50.
+    # pos=110 -> pos+length=150 (an der Grenze), aber pos+width=160 ragt 10m in die
+    # Flachwasserzone (Limit 9.0 < Tiefgang 12.0) hinein.
+    s0 = _ship(0, length=40, draft=12.0)
+    inst = _instance((s0,))
+    ok, violations = check_feasible(inst, {0: (0, 110)})
+    assert not ok
+    assert any("außerhalb einer Zone" in v for v in violations)
+
+
 def test_check_feasible_rejects_missing_ship():
     s0, s1 = _ship(0), _ship(1)
     inst = _instance((s0, s1))
