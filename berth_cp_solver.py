@@ -48,9 +48,7 @@ def build_model(instance):
 
     for ship in instance.ships:
         width = instance.occupied_width(ship)
-        zone_ranges = [
-            (z.start, z.end - width) for z in instance.compatible_zones(ship) if (z.end - z.start) >= width
-        ]
+        zone_ranges = instance.feasible_start_ranges(ship)
         pos_domain = cp_model.Domain.FromIntervals([[lo, hi] for lo, hi in zone_ranges])
 
         s = model.NewIntVar(ship.arrival, instance.horizon, f"start_{ship.index}")

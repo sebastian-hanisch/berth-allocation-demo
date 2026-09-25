@@ -34,8 +34,8 @@ def check_feasible(instance, plan):
 
         width = instance.occupied_width(ship)
         zone = _zone_for_position(instance, pos)
-        if zone is None or pos + ship.length > zone.end or pos < zone.start:
-            violations.append(f"{ship.name}: Position {pos}-{pos + ship.length}m liegt außerhalb einer Zone.")
+        if zone is None or pos + width > zone.end or pos < zone.start:
+            violations.append(f"{ship.name}: Belegung {pos}-{pos + width}m (inkl. Sicherheitsabstand) liegt außerhalb einer Zone.")
         elif zone.max_draft < ship.draft:
             violations.append(
                 f"{ship.name}: Tiefgang {ship.draft}m überschreitet Limit {zone.max_draft}m der Zone '{zone.name}'."
